@@ -16,7 +16,7 @@ services:
       SqlServer__SchemaOptions__AutomaticUpdatesEnabled: "true"
       DataStore: "SqlServer"
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:8080/metadata?_format=json || exit 1
+      test: ["CMD", "curl", "-f", "http://fhir-server:8080/metadata?_format=json"]
       interval: 10s
       retries: 5
       timeout: 10s
