@@ -10,7 +10,7 @@ services:
     platform: linux/amd64
     environment:
       FHIRServer__Security__Enabled: "false"
-      SqlServer__ConnectionString: "Server=tcp:sql,1433;Initial Catalog=FHIR;Persist Security Info=False;User ID=sa;Password=Fhir#1234;MultipleActiveResultSets=False;Connection Timeout=30;TrustServerCertificate=true;"
+      SqlServer__ConnectionString: "Server=tcp:fhir-sql,1433;Initial Catalog=FHIR;Persist Security Info=False;User ID=sa;Password=Fhir#1234;MultipleActiveResultSets=False;Connection Timeout=30;TrustServerCertificate=true;"
       SqlServer__AllowDatabaseCreation: "true"
       SqlServer__Initialize: "true"
       SqlServer__SchemaOptions__AutomaticUpdatesEnabled: "true"
@@ -23,14 +23,13 @@ services:
     ports:     
       - "8080:8080"
     depends_on:
-      sql :
+      fhir-sql :
        condition: service_healthy
-  sql:
-    build: 
-      context: dicom-server/
-      dockerfile: docker/sql/Dockerfile
+  fhir-sql:
+    image: "mcr.microsoft.com/mssql/server"
+    user: root
     volumes:
-       - SqlDb:/var/opt/mssql/data
+       - fhirSqlDb:/var/opt/mssql/data
     environment:
       SA_PASSWORD: Fhir#1234
       ACCEPT_EULA: "Y"
@@ -41,6 +40,23 @@ services:
         retries: 6
     ports:     
       - "1433:1433"
+  
+  dicom-sql:
+    build: 
+      context: dicom-server/
+      dockerfile: docker/sql/Dockerfile
+    volumes:
+       - dicomSqlDb:/var/opt/mssql/data
+    environment:
+      SA_PASSWORD: Fhir#1234
+      ACCEPT_EULA: "Y"
+    healthcheck:
+        test: ["CMD", "/opt/mssql-tools/bin/sqlcmd","-U sa -P Fhir#1234 -Q 'SELECT * FROM INFORMATION_SCHEMA.TABLES'"]
+        interval: 10s
+        timeout: 10s
+        retries: 6
+    ports:     
+      - "1434:1433"
   fhir-data:
     build: 
       context: fhirLoader-automate/
@@ -67,7 +83,7 @@ services:
       DicomFunctions__DurableTask__ConnectionName: "AzureWebJobsStorage"
       DicomFunctions__Indexing__Batching__MaxParallelCount: "1"
       SqlServer__AllowDatabaseCreation: "true"
-      SqlServer__ConnectionString: "Server=tcp:sql,1433;Initial Catalog=Dicom;Persist Security Info=False;User ID=sa;Password=Fhir#1234;MultipleActiveResultSets=False;Connection Timeout=30;TrustServerCertificate=true"
+      SqlServer__ConnectionString: "Server=tcp:dicom-sql,1433;Initial Catalog=Dicom;Persist Security Info=False;User ID=sa;Password=Fhir#1234;MultipleActiveResultSets=False;Connection Timeout=30;TrustServerCertificate=true"
       SqlServer__Initialize: "true"
     ports:
       - "8081:8080"
@@ -75,7 +91,7 @@ services:
     depends_on:
       - functions
       - azurite
-      - sql
+      - dicom-sql
   functions:
     build:
       # While Container Tools are said to support Azure Functions, it does not appear that
@@ -89,7 +105,7 @@ services:
     environment:
       AzureFunctionsJobHost__BlobStore__ConnectionString: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
       AzureFunctionsJobHost__Logging__Console__IsEnabled: "true"
-      AzureFunctionsJobHost__SqlServer__ConnectionString: "Server=tcp:sql,1433;Initial Catalog=Dicom;Persist Security Info=False;User ID=sa;Password=${SAPASSWORD:-L0ca1P@ssw0rd};MultipleActiveResultSets=False;Connection Timeout=30;TrustServerCertificate=true"
+      AzureFunctionsJobHost__SqlServer__ConnectionString: "Server=tcp:dicom-sql,1433;Initial Catalog=Dicom;Persist Security Info=False;User ID=sa;Password=${SAPASSWORD:-L0ca1P@ssw0rd};MultipleActiveResultSets=False;Connection Timeout=30;TrustServerCertificate=true"
       AzureWebJobsStorage: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
       AZURE_FUNCTIONS_ENVIRONMENT: "Development"
       WEBSITE_HOSTNAME: "localhost:8080"
@@ -126,5 +142,7 @@ services:
       - fhir-server
       - dicomserver
 volumes:
-  SqlDb:
+  fhirSqlDb:
+    external: true
+  dicomSqlDb:
     external: true
