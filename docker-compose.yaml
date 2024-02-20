@@ -1,4 +1,5 @@
 version: "3"
+name: healthservice
 services:
   fhir-server:
     build: 
@@ -64,6 +65,8 @@ services:
       args:
         SYNTHEA_ARGS: "-p 10"
     platform: linux/amd64
+    environment:
+        Fhir_Endpoint: "http://fhir-server:8080"
     depends_on:
       fhir-server:
         condition: service_healthy
