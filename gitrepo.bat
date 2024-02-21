@@ -1,7 +1,7 @@
 
 git clone https://github.com/microsoft/fhir-server.git ./fhir-server
 git clone https://github.com/microsoft/dicom-server.git ./dicom-server
-git clone https://github.com/Anilm19/fhirLoader-automate.git ./fhirLoader-automate
+git clone https://github.com/anilmkevlar/fhirloader.git ./fhirLoader-automate
 
 git config --global core.autocrlf false
 git clone https://github.com/synthetichealth/synthea.git ./fhirLoader-automate/synthea
