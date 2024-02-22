@@ -29,5 +29,5 @@ xcopy /y .\synthea.properties .\fhirLoader-automate\synthea\src\main\resources\s
 docker volume create dicomSqlDb
 docker volume create fhirSqlDb
 
-docker compose up
+docker compose --env-file ./.env up
 pause
